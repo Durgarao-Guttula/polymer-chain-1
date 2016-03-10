@@ -9,14 +9,12 @@ sigma6 = sigma**6
 sigma12 = sigma**12
 
 T = 1
-N = 100
+N = 250
 
-PERM = False
-
-up_lim = 2
-low_lim = 1.2
+PERM = True
 
 R2s = defaultdict(list)
+pol_weights = defaultdict(list)
 
 @jit
 def lennard_jones(r):
@@ -43,7 +41,7 @@ def plot_polymer(polymer):
 	plt.grid(True)
 	plt.show()
 
-def add_bead(polymer, pol_weight, L):
+def add_bead(polymer, pol_weight, L, weight3):
 	angles = np.arange(0, 2*np.pi, 2/6*np.pi).reshape(6, 1) + (2/6*np.pi)*np.random.rand()
 	delta_pos = np.concatenate((np.cos(angles), np.sin(angles)), axis=1)
 	new_pos = polymer[-1] + delta_pos
@@ -51,7 +49,7 @@ def add_bead(polymer, pol_weight, L):
 	for j in range(0,6):
 		w_l[j] = np.exp(-E(polymer,new_pos[j])/T)
 	if np.count_nonzero(w_l) == 0:
-		print("all options impossible")
+		print("all options impossible (L={})".format(L))
 		R2s[L].append(np.sum(polymer[-1]*polymer[-1]))
 		# b_ary = np.array(polymer)
 		# plt.plot(b_ary[:,0], b_ary[:,1], 'o-')
@@ -66,25 +64,37 @@ def add_bead(polymer, pol_weight, L):
 	j = np.random.choice(6, p=p_l)
 	polymer.append(new_pos[j])
 	pol_weight *= w_l[j]
+	L += 1
+	if L == 3:
+		weight3 = pol_weight # is this correct??!?!
+	pol_weights[L].append(pol_weight)
+	av_weight = np.mean(pol_weights[L])
+	up_lim = 2 * av_weight / weight3
+	low_lim = 1.2 * av_weight / weight3
+
+	print("up_lim: {} low_lim: {}".format(up_lim,low_lim))
+
+	#print("num concurrent polymers: {}, pol_weight: {}".format(a, pol_weight))
 	if L < N:
 		if PERM and pol_weight > up_lim:
 			new_polymer1 = polymer[:]
 			new_polymer2 = polymer[:]
-			add_bead(new_polymer1, 0.5*pol_weight, L+1)
-			add_bead(new_polymer2, 0.5*pol_weight, L+1)
+			# weight3 =
+			add_bead(new_polymer1, 0.5*pol_weight, L, weight3)
+			add_bead(new_polymer2, 0.5*pol_weight, L, weight3)
 		elif PERM and pol_weight < low_lim:
 			if np.random.rand() < 0.5:
-				add_bead(polymer, 2*pol_weight, L+1)
+				add_bead(polymer, 2*pol_weight, L, weight3)
 		else:
-			add_bead(polymer, pol_weight, L+1)
+			add_bead(polymer, pol_weight, L, weight3)
 	else:
-		print("reached maximum length")
+		print("reached maximum length (L={})".format(L))
 		R2s[L].append(np.sum(polymer[-1]*polymer[-1]))
 		#plot_polymer(polymer)
 
 ################################################
 
-num_runs = 1000
+num_runs = 100
 for i in range(0,num_runs):
 	print("run {} of {}".format(i, num_runs))
 
@@ -96,7 +106,7 @@ for i in range(0,num_runs):
 	L = 2
 
 	# run the simulation
-	add_bead(polymer, pol_weight, L)
+	add_bead(polymer, pol_weight, L, 0)
 
 Ls = []
 R2s_mean = []
@@ -106,7 +116,8 @@ for L, R2vals in sorted(R2s.items()):
 	R2s_mean.append(np.mean(R2vals))
 	R2s_std.append(np.std(R2vals))
 
-plt.errorbar(Ls, R2s_mean, yerr=R2s_std, fmt='.')
+plt.loglog(Ls, R2s_mean)
+#plt.errorbar(Ls, R2s_mean, yerr=R2s_std/np.sqrt(num_runs), fmt='.')
 plt.xlabel('$L$')
 plt.ylabel('$R^2$')
 plt.show()
