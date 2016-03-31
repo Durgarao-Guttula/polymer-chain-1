@@ -5,6 +5,7 @@ from collections import defaultdict
 from scipy.optimize import curve_fit
 import time
 import math
+import pickle
 
 epsilon = 0.25
 sigma = 0.8
@@ -14,7 +15,7 @@ sigma12 = sigma**12
 T = 1
 N = 250
 
-PERM = True
+PERM = False
 
 @jit
 def lennard_jones(r):
@@ -68,10 +69,10 @@ def add_bead(polymer, pol_weight, L, weight3, use_perm):
 	j = np.random.choice(6, p=p_l)
 	polymer.append(new_pos[j])
 	pol_weight *= w_l[j]
-	#pol_weight *= 1/(0.75*6)
-	#print(max(w_l[j],0.1))
-	#if pol_weight < 1e-10:
-#		print('pol_weight: {}, w_l = {}'.format(pol_weight,max(w_l[j],0.1)))
+	# pol_weight *= 1/(0.75*6)
+	# print(max(w_l[j],0.1))
+	# if pol_weight < 1e-10:
+	# 	print('pol_weight: {}, w_l = {}'.format(pol_weight,max(w_l[j],0.1)))
 
 	L += 1
 	if L == 3:
@@ -79,8 +80,8 @@ def add_bead(polymer, pol_weight, L, weight3, use_perm):
 	pol_weights[L].append(pol_weight)
 	R2s[L].append(np.sum(polymer[-1]*polymer[-1]))
 	av_weight = np.mean(pol_weights[L])
-	up_lim = 3.0 * av_weight / weight3
-	low_lim = 1.2 * av_weight / weight3
+	up_lim = 3.5 * av_weight / weight3
+	low_lim = 2 * av_weight / weight3
 
 	if(use_perm):
 		print(w_l[j])
@@ -107,17 +108,24 @@ def add_bead(polymer, pol_weight, L, weight3, use_perm):
 		#plot_polymer(polymer)
 		a -= 1
 
+def storvar(vardict):
+	f = open('Length_weights.txt', 'wb')
+	pickle.dump(vardict,f,)
+	f.close()
+	return
+
+
+
 ################################################
 
 R2s = defaultdict(list)
 pol_weights = defaultdict(list)
 
-num_runs = 100
+num_runs = 30
 
 for i in range(0,num_runs):
 	a = 1
 	print("run {} of {}".format(i, num_runs))
-
 	# IC: first two beads
 	polymer = []
 	polymer.append(np.array([0.0, 0.0]))
@@ -126,7 +134,7 @@ for i in range(0,num_runs):
 	R2s[2].append(1)
 	L = 2
 
-	use_perm = False #(len(R2s[N]) > 10)
+	use_perm = (len(R2s[N]) > 100)
 	print(use_perm)
 	# run the simulation
 	add_bead(polymer, pol_weight, L, None, use_perm)
@@ -159,13 +167,18 @@ R2s_mean = np.array(R2s_mean)
 
 def fitfunc(N, a):
 	return a*(N-1)**1.5
-popt, pcov = curve_fit(fitfunc, Ls, R2s_mean, sigma=R2s_std)
-a_fit = popt[0]
-print("fitted a = {}".format(a_fit))
 
-plt.loglog(Ls, fitfunc(Ls,a_fit), '-')
+print('Ls= {} R2smean= {}'.format(Ls, R2s_mean))
+
+# popt, pcov = curve_fit(fitfunc, Ls, R2s_mean, sigma=R2s_std)
+# a_fit = popt[0]
+# print("fitted a = {}".format(a_fit))
+
+vardict = {'L': Ls, 'R2': R2s_mean}
+storvar(vardict)
+
+plt.loglog(Ls, R2s_mean, '.')
 plt.hold(True)
-plt.errorbar(Ls, R2s_mean, R2s_std, fmt='.')
 plt.xlim(xmin=2) #match book
 plt.ylim(ymin=1)
 plt.xlabel('$N$')
