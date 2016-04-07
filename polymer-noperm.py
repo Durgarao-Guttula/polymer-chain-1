@@ -11,8 +11,8 @@ sigma6 = sigma**6
 sigma12 = sigma**12
 
 T = 1
-N = 150
-num_runs = 100
+N = 250
+num_runs = 10000
 
 @jit
 def lennard_jones(r):
@@ -44,7 +44,7 @@ def add_bead(polymer, pol_weight, L):
 	angles = np.arange(0, 2*np.pi, 2/6*np.pi).reshape(6, 1) + angle_offset
 	delta_pos = np.concatenate((np.cos(angles), np.sin(angles)), axis=1)
 	new_pos = polymer[-1] + delta_pos
-	w_l = np.ndarray(6)
+	w_l = np.zeros(6)
 	for j in range(0,6):
 		w_l[j] = np.exp(-E(polymer,new_pos[j])/T)
 	W_l = np.sum(w_l)
@@ -55,10 +55,11 @@ def add_bead(polymer, pol_weight, L):
 		print("all options impossible, choosing at random")
 		j = np.random.choice(6)
 	polymer.append(new_pos[j])
-	pol_weight *= w_l[j]
+	pol_weight *= W_l
 	L += 1
 
 	R2s[L].append(np.sum(polymer[-1]*polymer[-1]))
+	Ws[L].append(pol_weight)
 	
 	if L < N:
 		add_bead(polymer, pol_weight, L)
@@ -69,6 +70,7 @@ def add_bead(polymer, pol_weight, L):
 ################################################
 
 R2s = defaultdict(list)
+Ws = defaultdict(list)
 
 for i in range(0,num_runs):
 	pop = 1
@@ -78,6 +80,8 @@ for i in range(0,num_runs):
 	polymer.append(np.array([1.0, 0.0]))
 	pol_weight = 1
 	L = 2
+	R2s[2].append(1.0)
+	Ws[L].append(pol_weight)
 	
 	# run the simulation
 	print("run {} of {}".format(i, num_runs))
@@ -85,23 +89,21 @@ for i in range(0,num_runs):
 
 plt.figure()
 Ls = []
-R2s_mean = []
-R2s_std = []
+R2s_avg = []
 for L, R2vals in sorted(R2s.items()):
 	Ls.append(L)
-	R2s_mean.append(np.mean(R2vals))
-	R2s_std.append(np.std(R2vals))
+	R2s_avg.append(np.average(R2vals,weights=Ws[L]))
 
 Ls = np.array(Ls)
-R2s_mean = np.array(R2s_mean)
+R2s_avg = np.array(R2s_avg)
 
 def fitfunc(N, a):
 	return a*(N-1)**1.5
-popt, pcov = curve_fit(fitfunc, Ls, R2s_mean)
+popt, pcov = curve_fit(fitfunc, Ls, R2s_avg)
 a_fit = popt[0]
 print("fitted a = {}".format(a_fit))
 
-plt.loglog(Ls, R2s_mean, '.', Ls, fitfunc(Ls, a_fit), '-')
+plt.loglog(Ls, R2s_avg, '.', Ls, fitfunc(Ls, a_fit), '-')
 plt.hold(True)
 plt.xlim(xmin=2) #match book
 plt.ylim(ymin=1)
