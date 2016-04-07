@@ -37,7 +37,7 @@ def plot_polymer(polymer):
 	plt.grid(True)
 	plt.show()
 
-def add_bead(polymer, L):
+def add_bead(polymer, pol_weight, L):
 	global R2s
 
 	angle_offset = np.random.uniform(0, 2/6*np.pi)
@@ -55,12 +55,13 @@ def add_bead(polymer, L):
 		print("all options impossible, choosing at random")
 		j = np.random.choice(6)
 	polymer.append(new_pos[j])
-
+	pol_weight *= w_l[j]
 	L += 1
+
 	R2s[L].append(np.sum(polymer[-1]*polymer[-1]))
 	
 	if L < N:
-		add_bead(polymer, L)
+		add_bead(polymer, pol_weight, L)
 	else:
 		print("reached maximum length (L={})".format(L))
 		#plot_polymer(polymer)
@@ -75,13 +76,12 @@ for i in range(0,num_runs):
 	polymer = []
 	polymer.append(np.array([0.0, 0.0]))
 	polymer.append(np.array([1.0, 0.0]))
+	pol_weight = 1
 	L = 2
-	#
-	R2s[2].append(1.0)
 	
-	print("run {} of {}".format(i, num_runs))
 	# run the simulation
-	add_bead(polymer, L)
+	print("run {} of {}".format(i, num_runs))
+	add_bead(polymer, pol_weight, L)
 
 plt.figure()
 Ls = []
