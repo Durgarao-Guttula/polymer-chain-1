@@ -59,7 +59,7 @@ def add_bead(polymer, pol_weight, L, weight3, use_perm):
 		print("all options impossible, choosing at random")
 		j = np.random.choice(6)
 	polymer.append(new_pos[j])
-	pol_weight *= w_l[j]
+	pol_weight *= W_l
 	# pol_weight *= 1/(0.75*6)
 	# print(max(w_l[j],0.1))
 	# if pol_weight < 1e-10:
@@ -129,49 +129,39 @@ for i in range(0,num_runs):
 	# run the simulation
 	add_bead(polymer, pol_weight, L, None, use_perm)
 
-plt.figure()
 Ls = []
 R2s_count = []
+R2s_avg = []
 av_weights = []
 for L, R2vals in sorted(R2s.items()):
 	Ls.append(L)
 	R2s_count.append(len(R2vals))
+	R2s_avg.append(np.average(R2vals,weights=pol_weights[L]))
 	av_weights.append(np.mean(pol_weights[L]))
+
+Ls = np.array(Ls)
+R2s_avg = np.array(R2s_avg)
+
+def fitfunc(N, a):
+	return a*(N-1)**1.5
+popt, pcov = curve_fit(fitfunc, Ls, R2s_avg)
+a_fit = popt[0]
+print("fitted a = {}".format(a_fit))
+
+plt.figure()
 plt.semilogy(Ls, R2s_count, '.', Ls, av_weights, '.')
 plt.xlabel('$L$')
 plt.legend(['count','av_weight'])
 plt.show(block=False)
 
-
 plt.figure()
-Ls = []
-R2s_mean = []
-R2s_std = []
-for L, R2vals in sorted(R2s.items()):
-	Ls.append(L)
-	R2s_mean.append(np.mean(R2vals))
-	R2s_std.append(np.std(R2vals))
-
-Ls = np.array(Ls)
-R2s_mean = np.array(R2s_mean)
-
-def fitfunc(N, a):
-	return a*(N-1)**1.5
-
-print('Ls= {} R2smean= {}'.format(Ls, R2s_mean))
-
-popt, pcov = curve_fit(fitfunc, Ls, R2s_mean)
-a_fit = popt[0]
-print("fitted a = {}".format(a_fit))
-a_fit = 0.8
-
-vardict = {'L': Ls, 'R2': R2s_mean}
-storvar(vardict)
-
-plt.loglog(Ls, R2s_mean, '.', Ls, fitfunc(Ls, a_fit), '-')
+plt.loglog(Ls, R2s_avg, '.', Ls, fitfunc(Ls, a_fit), '-')
 plt.hold(True)
 plt.xlim(xmin=2) #match book
 plt.ylim(ymin=1)
 plt.xlabel('$N$')
 plt.ylabel('$R^2$')
 plt.show()
+
+vardict = {'L': Ls, 'R2': R2s_avg}
+storvar(vardict)
