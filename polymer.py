@@ -5,7 +5,6 @@ from collections import defaultdict
 from scipy.optimize import curve_fit
 import time
 import math
-import pickle
 import sys
 
 epsilon = 0.25
@@ -14,7 +13,7 @@ sigma6 = sigma**6
 sigma12 = sigma**12
 
 T = 1
-N = 150
+N = 250
 num_runs = 1000
 
 DEBUG = False
@@ -56,6 +55,8 @@ def add_bead(polymer, pol_weight, weight3, use_perm):
 		w_l[j] = np.exp(-E(polymer,new_pos[j])/T)
 	W_l = np.sum(w_l)
 	if W_l > 0:
+		# choose one of the six new bead positions,
+		# with probability based on the weight (energy) of the new position
 		p_l = w_l/W_l
 		j = np.random.choice(6, p=p_l)
 	else:
@@ -77,7 +78,7 @@ def add_bead(polymer, pol_weight, weight3, use_perm):
 		weight3 = pol_weight
 
 	av_weight = np.mean(pol_weights[len(polymer)])
-	up_lim = 2 * av_weight / weight3
+	up_lim = 3 * av_weight / weight3
 	low_lim = 1.2 * av_weight / weight3
 
 	if len(polymer) < N:
@@ -100,12 +101,6 @@ def add_bead(polymer, pol_weight, weight3, use_perm):
 		if DEBUG: print("reached maximum length (L={})".format(len(polymer)))
 		pop -= 1
 		#plot_polymer(polymer)
-
-def storvar(vardict):
-	f = open('Length_weights.txt', 'wb')
-	pickle.dump(vardict,f,)
-	f.close()
-	return
 
 
 
@@ -133,18 +128,20 @@ for i in range(0,num_runs):
 Ls = []
 R2s_count = []
 R2s_avg = []
+R2s_std = []
 av_weights = []
 for L in sorted(R2s.keys()):
 	Ls.append(L)
 	R2s_count.append(len(R2s[L]))
-	R2s_avg.append(np.average(R2s[L],weights=pol_weights[L]))
+	average = np.average(R2s[L],weights=pol_weights[L])
+	variance = np.average((R2s[L]-average)**2, weights=pol_weights[L])/len(R2s[L])
+	R2s_avg.append(average)
+	R2s_std.append(np.sqrt(variance))
 	av_weights.append(np.mean(pol_weights[L]))
 
 Ls = np.array(Ls)
 R2s_avg = np.array(R2s_avg)
-
-vardict = {'L': Ls, 'R2': R2s_avg}
-storvar(vardict)
+R2s_std = np.array(R2s_std)
 
 def fitfunc(N, a):
 	return a*(N-1)**1.5
@@ -153,16 +150,14 @@ a_fit = popt[0]
 print("fitted a = {}".format(a_fit))
 
 plt.figure()
-plt.semilogy(Ls, R2s_count, '.', Ls, av_weights, '.')
-plt.xlabel('$L$')
-plt.legend(['count','av_weight'])
-plt.show(block=False)
-
-plt.figure()
-plt.loglog(Ls, R2s_avg, '.', Ls, fitfunc(Ls, a_fit), '-')
+plt.loglog(Ls, fitfunc(Ls, a_fit), '-')
 plt.hold(True)
+plt.errorbar(Ls, R2s_avg, R2s_std, fmt='.')
 plt.xlim(xmin=2) #match book
 plt.ylim(ymin=1)
 plt.xlabel('$N$')
 plt.ylabel('$R^2$')
+
+
+plt.plot(Ls, R2s_count, 'ko')
 plt.show()
