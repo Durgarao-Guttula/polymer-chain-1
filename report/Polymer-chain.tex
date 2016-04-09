@@ -1,6 +1,7 @@
 \documentclass[a4paper,twocolumn]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
+\usepackage{epstopdf}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \setlength{\columnsep}{0.8cm}
@@ -21,9 +22,7 @@
 \end{abstract}
 
 \section{Introduction}
-Rosenbluth algorithm and optimizations are used to simulate polymer chains. 
-
-\section{Methods}
+From an early stage polymer physics has been used to develop Monte Carlo algorithms. These algorithms depend on the problem of interest: is the polymer in a melt or in a solution. In this report the focus is on a dilute polymer solution.\\ \\ 
 The polymer model is a self-avoiding walk in 2 dimensions, where each effective monomer is a fixed distance from the nearest neighbour. The interaction between the beads is modeled by the Lennard-Jones potential:
 
 \begin{equation}\label{eq:lennardjones}
@@ -31,7 +30,7 @@ The polymer model is a self-avoiding walk in 2 dimensions, where each effective 
 \end{equation}
 
 Where $\epsilon = 0.25$ (natural units), and $\sigma = 0.8$, given that the distance between monomers is equal to $1$.
-
+\section{Methods}
 \subsection{Rosenbluth algorithm}
 The Rosenbluth algorithm is a Monte-Carlo method to generate polymers, which will avoid high-energy conformations when adding new beads to the polymer.\cite{rosenbluth} This method uses six evenly spaced ($2\pi /6$) discrete angles with a random offset for which the new bead can be added to the polymer, as shown in fig. \ref{fig:roulette}. It will avoid any improbable conformations by adding the next bead with a probability proportional to $\exp(-E(\theta)/(k_BT))$, where $E(\theta)$ is the interaction energy of the new bead with the rest of the polymer, and $\theta$ is the angle between the new bead and the previous two beads. The weight for each angle $\theta_j$ is calculated with:
 \begin{equation}\label{eq:weight}
